@@ -86,15 +86,17 @@ void test_Vec(std::array<T, N> teste_das)
         for (int i = 0; i < N; i++) assert(a[i] == teste_das[i]);
         cout << "passed." << endl;
     }
-
 #if 0
+
     {
         cout << "  addition: ";
-        Vec a({1, 2, 3}), b({4, 5, 6});
+        Vec<T, N> a(teste_das);
+        Vec<T, N> b(teste_das);
+        for (int i = 0; i < N; i++) b[i] += 1;
         a += b;
-        assert(a == Vec({5, 7, 9}));
-        auto c = a + Vec({1, 1, 1});
-        assert(c == Vec({6, 8, 10}));
+        assert(a == a + b);
+        auto c = a + b;
+        assert(c == a + b);
         Vec one({1, 1, 1}), four({4, 4, 4});
         one += one + one + one;
         assert(one == four);

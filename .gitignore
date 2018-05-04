@@ -1,6 +1,6 @@
 .vs/
 .vscode/
-build
+build/
 *.exe
 *.obj
 *.zip

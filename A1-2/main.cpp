@@ -10,8 +10,10 @@ using namespace my;
 int main()
 {
 
-    //std::array<float, 3> teste_das = {0.1f, 0.5f, 0.2f};
-    // test_Vec<float, 3>(teste_das);
+    std::array<float, 3> test = {0.1f, 0.5f, 0.2f};
+    test_Vec<float, 3>(test);
+
+    std::cout << std::endl;
 
     // 1.
     std::cout << "1. length():" << std::endl;
