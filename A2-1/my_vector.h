@@ -10,7 +10,7 @@ class vector
 {
 // Alle Elemente mit ValueT initialisieren, wenn kein Payload mitgegeben dann mit ValueT() initialisieren.
   private:
-    ValueT *mem = nullptr;
+    ValueT *_mem = nullptr;
     size_t _dimension = 0;
 
 
@@ -20,20 +20,17 @@ class vector
     vector(size_t n = 0, ValueT data = ValueT())
     {
         _dimension = n;
-
-        mem = new ValueT[n];
+        _mem = new ValueT[n];
 
         for (size_t i = 0; i < n; i++)
         {
-            *(mem + i) = data;
+            *(_mem + i) = data;
         }
-        
-
     }
 
     ~vector()
     {
-        if (!empty()) delete[] mem;
+        if (!empty()) delete[] _mem;
     }
 
     size_t size() const { return _dimension; }
@@ -45,11 +42,11 @@ class vector
         ValueT *new_mem = new ValueT[size() + 1];
         for (size_t i = 0; i < size(); i++)
         {
-            *(new_mem + i) = mem[i];
+            *(new_mem + i) = _mem[i];
         }
         *(new_mem + size()) = v;
-        if (!empty()) delete[] mem;
-        mem = new_mem;
+        if (!empty()) delete[] _mem;
+        _mem = new_mem;
         _dimension += 1;
     }
 
@@ -58,23 +55,40 @@ class vector
         if (size() <= 1)
         {
             _dimension -= 1;
-            ValueT result = *mem;
-            delete[] mem;
+            ValueT result = *_mem;
+            delete[] _mem;
             return result;
         }
-
-        ValueT last = mem[size() - 1];
-
+        ValueT last = _mem[size() - 1];
         ValueT *new_mem = new ValueT[size() - 1];
         for (size_t i = 0; i < size() - 1; i++)
         {
-            *(new_mem + i) = mem[i];
+            *(new_mem + i) = _mem[i];
         }
         if (!empty())
-            delete[] mem;
-        mem = new_mem;
+            delete[] _mem;
+        _mem = new_mem;
         _dimension -= 1;
         return last;
+    }
+
+    ValueT &operator[] (size_t i)
+    {
+        return *(_mem + i);
+    }
+
+    const ValueT operator[] (size_t i) const
+    {
+        return *(_mem + i);
+    }
+
+    ValueT &at(size_t i) const
+    {
+        if (i < 0 || i >= size())
+        {
+            throw std::out_of_range("index nicht gefunden!");
+        }
+        return *(_mem + i);
     }
   
 };
