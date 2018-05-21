@@ -10,7 +10,7 @@ class vector
 {
 // Alle Elemente mit ValueT initialisieren, wenn kein Payload mitgegeben dann mit ValueT() initialisieren.
   private:
-    ValueT *_data = nullptr;
+    ValueT *mem = nullptr;
     size_t _dimension = 0;
 
 
@@ -21,11 +21,11 @@ class vector
     {
         _dimension = n;
 
-        _data = new ValueT[n];
+        mem = new ValueT[n];
 
         for (size_t i = 0; i < n; i++)
         {
-            *(_data + i) = data;
+            *(mem + i) = data;
         }
         
 
@@ -33,22 +33,49 @@ class vector
 
     ~vector()
     {
-        delete[] _data;
+        if (!empty()) delete[] mem;
     }
 
-    size_t size() { return _dimension; }
+    size_t size() const { return _dimension; }
 
-    bool empty() { return size() == 0; }
+    bool empty() const { return size() == 0; }
 
-/*     void push_back(const ValueT& v)
+    void push_back(const ValueT &v)
     {
-
+        ValueT *new_mem = new ValueT[size() + 1];
+        for (size_t i = 0; i < size(); i++)
+        {
+            *(new_mem + i) = mem[i];
+        }
+        *(new_mem + size()) = v;
+        if (!empty()) delete[] mem;
+        mem = new_mem;
+        _dimension += 1;
     }
 
     ValueT pop_back()
     {
+        if (size() <= 1)
+        {
+            _dimension -= 1;
+            ValueT result = *mem;
+            delete[] mem;
+            return result;
+        }
 
-    } */
+        ValueT last = mem[size() - 1];
+
+        ValueT *new_mem = new ValueT[size() - 1];
+        for (size_t i = 0; i < size() - 1; i++)
+        {
+            *(new_mem + i) = mem[i];
+        }
+        if (!empty())
+            delete[] mem;
+        mem = new_mem;
+        _dimension -= 1;
+        return last;
+    }
   
 };
 

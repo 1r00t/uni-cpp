@@ -31,7 +31,6 @@ void test_21()
         cout << " done." << endl;
     }
 
-#if 0
  
     {
         cout << "push_back(), pop_back(), size(), empty() ... ";
@@ -63,6 +62,7 @@ void test_21()
         assert(Payload::count() == 0);
         cout << " done." << endl;
     }
+#if 0
 
     {
         cout << "operator[] ... ";
