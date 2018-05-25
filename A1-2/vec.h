@@ -70,12 +70,7 @@ class Vec
 
     T length()
     {
-        T result = T();
-        for (auto e : a_)
-        {
-            result += e * e;
-        }
-        return std::sqrt(result);
+        return std::sqrt(dot(Vec<T, N>(a_), Vec<T, N>(a_)));
     }
 
     template <typename T, int N>

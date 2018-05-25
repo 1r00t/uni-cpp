@@ -17,6 +17,9 @@ class vector
   public:
     using value_type = ValueT;
 
+    vector(vector<ValueT> const &) = delete;
+    vector<ValueT> &operator=(vector<ValueT> const &) = delete;
+
     vector(size_t n = 0, ValueT data = ValueT())
     {
         _dimension = n;
@@ -30,12 +33,14 @@ class vector
 
     ~vector()
     {
-        if (!empty()) delete[] _mem;
+        clear();
     }
 
     size_t size() const { return _dimension; }
 
     bool empty() const { return size() == 0; }
+
+    void clear() { if (!empty()) delete[] _mem;}
 
     void push_back(const ValueT &v)
     {
@@ -86,11 +91,11 @@ class vector
     {
         if (i < 0 || i >= size())
         {
-            throw std::out_of_range("index nicht gefunden!");
+            throw std::out_of_range("Index out of range!");
         }
         return *(_mem + i);
     }
-  
+
 };
 
 } // namespace my

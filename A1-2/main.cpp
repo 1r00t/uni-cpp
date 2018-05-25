@@ -1,5 +1,4 @@
 #include <iostream>
-#include <string>
 #include "test12.h"
 #include "vec.h"
 #include <vector>
