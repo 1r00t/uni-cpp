@@ -23,6 +23,9 @@
          <property name="currentIndex">
           <number>0</number>
          </property>
+         <property name="tabsClosable">
+          <bool>true</bool>
+         </property>
          <widget class="QWidget" name="tab_3">
           <attribute name="title">
            <string>Tab 1</string>
@@ -103,11 +106,16 @@
     <addaction name="separator"/>
     <addaction name="actionjoin_channel"/>
     <addaction name="actionLeave_channel"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
    </widget>
    <addaction name="menuConnection"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionConnect">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Connect</string>
    </property>
@@ -116,18 +124,32 @@
    </property>
   </action>
   <action name="actionjoin_channel">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Join channel</string>
    </property>
   </action>
   <action name="actionDisconnect">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Disconnect</string>
    </property>
   </action>
   <action name="actionLeave_channel">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Leave channel</string>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
    </property>
   </action>
  </widget>

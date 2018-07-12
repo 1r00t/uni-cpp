@@ -22,14 +22,16 @@ public:
     ~IrcClient();
 
 private slots:
+    void handleMessage(const IRC::Command &command);
+    void connectionOpen();
+
     void on_actionConnect_triggered();
-    void displayMessage(const IRC::Command &command);
-
     void on_sendButton_clicked();
-
     void on_chatLineEdit_returnPressed();
-
     void on_tabSwitched(int index);
+    void on_actionDisconnect_triggered();
+
+    void on_tabWidget_tabCloseRequested(int index);
 
 private:
     Ui::IrcClient *ui;
@@ -38,7 +40,7 @@ private:
 
     ServerSelectWidget *serverSelectWidget;
 
-    QMap<QString, TabPage*> _tabs;
+    QMap<QString, TabPage*> _tabs; // sollte auch besser auf den heap!
     QMap<QString, QStringList> _users; // sollte besser auf dem heap sein!
 
     void createTab(const QString &name);

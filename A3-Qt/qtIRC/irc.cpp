@@ -188,6 +188,8 @@ void IRC::connected()
     // SLOT connected
     qDebug() << "connected ...";
 
+    emit connectionOpen();
+
     login();
 }
 

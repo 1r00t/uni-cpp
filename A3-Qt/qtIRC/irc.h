@@ -40,6 +40,7 @@ public:
 
 signals:
     void messageReceived(const IRC::Command &command) const;
+    void connectionOpen();
 
 
 public slots:
