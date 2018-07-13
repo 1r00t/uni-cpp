@@ -6,7 +6,8 @@
 IrcClient::IrcClient(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::IrcClient),
-    _irc(new IRC(this)) // IRC instanz erstellen
+    _irc(new IRC(this)), // IRC instanz erstellen
+    _openChannels(new std::vector<Channel>)
 
 {
     ui->setupUi(this);
@@ -17,18 +18,24 @@ IrcClient::IrcClient(QWidget *parent) :
     connect(_irc, SIGNAL(connectionOpen()), this, SLOT(connectionOpen()));
     connect(ui->actionQuit, SIGNAL(triggered(bool)), QApplication::instance(), SLOT(quit()));
 
-    // create server tab
+
+    // create Server Channel
     TabPage *server_tab = new TabPage;
-    _tabs.insert("Server", server_tab);
+    Channel channel = Channel();
+    channel.name = "Server";
+    channel.tabPage = server_tab;
+    _openChannels->push_back(channel);
 
     // set up tabs
-    ui->tabWidget->addTab(server_tab, "Server");
+    ui->tabWidget->addTab(server_tab, channel.name);
     ui->tabWidget->removeTab(1);
     ui->tabWidget->removeTab(0);
     ui->tabWidget->tabBar()->tabButton(0 ,QTabBar::RightSide)->deleteLater();
     ui->tabWidget->tabBar()->setTabButton(0, QTabBar::RightSide, 0);
-    ui->tabWidget->setStyleSheet("QTabBar::QTabButton { height: 100px; }");
 
+    // set up context menu for user list
+    ui->userList->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->userList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showUserListContextMenu(QPoint)));
 
 }
 
@@ -44,100 +51,111 @@ void IrcClient::connectionOpen()
 }
 
 
-void IrcClient::createTab(const QString &name)
+void IrcClient::createTab(Channel channel)
 {
-    if(!_tabs.contains(name))
-    {
-        TabPage *tab = new TabPage;
-        _tabs.insert(name, tab);
-        ui->tabWidget->addTab(tab, name);
-    }
+    TabPage *tab = new TabPage;
+    channel.tabPage = tab;
+    _openChannels->push_back(channel);
+    ui->tabWidget->addTab(tab, channel.name);
+
 }
 
-void IrcClient::removeTab(const QString &name)
+void IrcClient::removeTab(int index)
 {
-    if(_tabs.contains(name))
-    {
-        ui->tabWidget->removeTab(ui->tabWidget->indexOf(_tabs.value(name)));
-        _tabs.remove(name);
-    }
+    _openChannels->erase(_openChannels->begin() + index);
+    ui->tabWidget->removeTab(index);
+
 }
 
 void IrcClient::on_tabSwitched(int index)
 {
-    QString channel = ui->tabWidget->tabText(index);
-    updateAndShowUserList(channel);
+
+    showUserList(index);
 }
 
-void IrcClient::updateAndShowUserList(QString channel)
+
+void IrcClient::showUserList(int index)
 {
-    // update user list per channel
-    if(!_users.contains(channel))
-    {
-        ui->userList->clear();
-        return;
-    }
-    QStringList users = _users[channel];
+
+    Channel channel = _openChannels->at(index);
+
+    auto users = channel.users;
 
     ui->userList->clear();
-    ui->userList->addItems(users);
+
+    for(int i = 0; i < users->size(); i++)
+    {
+        QString userName = *std::next(users->begin(), i);
+        ui->userList->addItem(users->QString);
+        ui->userList->addItem(users->at(i).name);
+    }
 }
+
 
 void IrcClient::handleMessage(const IRC::Command &command)
 {
-    QString outputText;
-    TabPage *tab;
-
-
     // :rajaniemi.freenode.net 470 one_roOt #linux ##linux :Forwarding to another channel
     // switch channel
-    if(command.command == "470") // forward
+
+    if(command.prefix.left(command.prefix.indexOf("!")) == _irc->getNickname())
+    {
+        qDebug() << "es geht mich etwas an!";
+    } else if(command.command == "470") // forward
     {
         QString oldChanName = command.parameters.at(1);
         QString newChanName = command.parameters.at(2);
-        tab = _tabs.value(oldChanName);
-        ui->tabWidget->setTabText(ui->tabWidget->indexOf(tab), newChanName);
-        createTab(newChanName);
-        removeTab(oldChanName);
+
+        for(int i = 0; i < _openChannels->size(); i++)
+        {
+            if(_openChannels->at(i).name == oldChanName)
+            {
+                Channel channel = Channel();
+                channel.name = newChanName;
+
+                removeTab(i);
+                createTab(channel);
+                break;
+            }
+        }
     }
 
     // :rajaniemi.freenode.net 353 one_roOt * ##linux :feigned banisterfiend b1101 ALowther_ Guest52012
     // name list
     else if(command.command == "353") // nickname list
     {
-        QStringList users = command.trailing.split(" ", QString::SkipEmptyParts);
-        QString channel = command.parameters.at(2);
-        if(!_users.contains(channel))
+        QString channelName = command.parameters.at(2);
+        QStringList userNames = command.trailing.split(" ", QString::SkipEmptyParts);
+        int channelIndex = getChannelIndex(channelName);
+        Channel channel = _openChannels->at(channelIndex);
+
+        // add users
+        for(QString userName: userNames)
         {
-            _users.insert(channel, users);
-        } else {
-            for(auto user: users)
-            {
-                if(!_users.value(channel).contains(user))
-                {
-                    _users[channel].append(user);
-                }
-            }
+            channel.users->append(User(userName));
         }
-        qSort(_users[channel]);
-        updateAndShowUserList(channel);
+
+        // show userlist if is curren index
+        if(channelIndex == ui->tabWidget->currentIndex())
+        {
+            showUserList(channelIndex);
+        }
     }
 
     // ":alpha!~alpha@97-127-17-117.mpls.qwest.net JOIN ##linux"
     // user joins
     else if(command.command == "JOIN")
     {
-        QString channel = command.parameters.first();
-        QString user = command.prefix.left(command.prefix.indexOf("!"));
-        if(_users.contains(channel) && !_users[channel].contains(user))
+        QString channelName = command.parameters.first();
+        QString userName = command.prefix.left(command.prefix.indexOf("!"));
+        int channelIndex = getChannelIndex(channelName);
+        Channel channel = _openChannels->at(channelIndex);
+
+        channel.users->append(User(userName));
+        channel.tabPage->appendText("<span style=\"color: lightgrey;\"><b>" + userName + "</b> joined</span>");
+
+        if(channelIndex == ui->tabWidget->currentIndex())
         {
-            _users[channel].append(user);
-            qSort(_users[channel]);
-            _tabs.value(channel)->appendText("<span style=\"color: lightgrey;\"><b>" + user + "</b> joined</span>");
-            if(channel == ui->tabWidget->tabText(ui->tabWidget->currentIndex())) // if visible then update view.
-            {
-                updateAndShowUserList(channel);
-            }
+            showUserList(channelIndex);
         }
     }
 
@@ -145,20 +163,21 @@ void IrcClient::handleMessage(const IRC::Command &command)
     // user quits
     else if(command.command == "QUIT")
     {
-        QString user = command.prefix.left(command.prefix.indexOf("!"));
-        QStringList channels = _users.keys();
-        for(auto channel: channels)
-        {
-            if(_users[channel].contains(user))
-            {
-                _users[channel].removeOne(user);
-            }
-            // a user quits
-            _tabs.value(channel)->appendText("<span style=\"color: lightgrey;\"><b>" + user + "</b> quit (" + command.trailing + ")</span>");
+        QString userName = command.prefix.left(command.prefix.indexOf("!"));
 
-            if(channel == ui->tabWidget->tabText(ui->tabWidget->currentIndex())) // if visible then update view.
+
+        for(int i = 0; i < _openChannels->size(); i++)
+        {
+            int userIndex = getUserIndex(i, userName);
+            if(userIndex != -1)
             {
-                updateAndShowUserList(ui->tabWidget->tabText(ui->tabWidget->currentIndex()));
+                _openChannels->at(i).users->removeAt(userIndex);
+                _openChannels->at(i).tabPage->appendText("<span style=\"color: lightgrey;\"><b>" + userName + "</b> quit (" + command.trailing + ")</span>");
+
+                if(i == ui->tabWidget->currentIndex())
+                {
+                    showUserList(i);
+                }
             }
         }
     }
@@ -167,16 +186,17 @@ void IrcClient::handleMessage(const IRC::Command &command)
     // user parts
     else if(command.command == "PART")
     {
-        QString user = command.prefix.left(command.prefix.indexOf("!"));
-        QString channel = command.parameters.first();
-        if(_users.contains(channel) && _users[channel].contains(user))
+        QString userName = command.prefix.left(command.prefix.indexOf("!"));
+        QString channelName = command.parameters.first();
+        int channelIndex = getChannelIndex(channelName);
+        int userIndex = getUserIndex(channelIndex, userName);
+
+        _openChannels->at(channelIndex).users->removeAt(userIndex);
+        _openChannels->at(channelIndex).tabPage->appendText("<span style=\"color: lightgrey;\"><b>" + userName + "</b> parted (" + command.trailing + ")</span>");
+
+        if(channelIndex == ui->tabWidget->currentIndex())
         {
-            _users[channel].removeOne(user);
-            if(channel == ui->tabWidget->tabText(ui->tabWidget->currentIndex()))
-            {
-                _tabs.value(channel)->appendText("<span style=\"color: lightgrey;\"><b>" + user + "</b> parted (" + command.trailing + ")</span>");
-                updateAndShowUserList(ui->tabWidget->tabText(ui->tabWidget->currentIndex()));
-            }
+            showUserList(channelIndex);
         }
     }
 
@@ -184,22 +204,62 @@ void IrcClient::handleMessage(const IRC::Command &command)
     // user changes nickname
     else if(command.command == "NICK")
     {
-        QString user = command.prefix.left(command.prefix.indexOf("!"));
-        QStringList channels = _users.keys();
-        for(QString channel: channels)
+        QString oldUserName = command.prefix.left(command.prefix.indexOf("!"));
+        QString newUserName = command.trailing;
+
+        for(int i = 0; i < _openChannels->size(); i++)
         {
-            if(_users[channel].contains(user))
+            int userIndex = getUserIndex(i, oldUserName);
+
+            if(userIndex != -1)
             {
-                _users[channel].replace(_users[channel].indexOf(user), command.trailing);
-            }
-            if(channel == ui->tabWidget->tabText(ui->tabWidget->currentIndex()))
-            {
-                qSort(_users[channel]);
-                updateAndShowUserList(ui->tabWidget->tabText(ui->tabWidget->currentIndex()));
+                _openChannels->at(i).users->at(userIndex).name = newUserName;
+                _openChannels->at(i).tabPage->appendText("<span style=\"color: lightgrey;\"><b>" + oldUserName + "</b> changed name to <b>" + newUserName + "</b></span>");
+
+                if(i == ui->tabWidget->currentIndex())
+                {
+                    showUserList(i);
+                }
             }
         }
     }
 
+    // WHOIS
+    else if(command.command == "311") // real name
+    {
+        QString nickname = command.parameters.at(1);
+        // QString username = command.parameters.at(1);
+        // QString host = command.parameters.at(2);
+        QString realname = command.trailing;
+        Channel channel = _openChannels->at(ui->tabWidget->currentIndex());
+        channel.tabPage->appendText("<span style=\"color: darkgrey;\">" + nickname + "'s real name is " + realname + "</span>");
+    }
+
+    else if(command.command == "319") // is in channels
+    {
+        QString nickname = command.parameters.at(1);
+        QString inChannel = command.trailing;
+        Channel channel = _openChannels->at(ui->tabWidget->currentIndex());
+        channel.tabPage->appendText("<span style=\"color: darkgrey;\">" + nickname + " is in channel " + inChannel + "</span>");
+    }
+
+    else if(command.command == "312") // server info
+    {
+        QString nickname = command.parameters.at(1);
+        QString server = command.parameters.last();
+        QString serverInfo = command.trailing;
+        Channel channel = _openChannels->at(ui->tabWidget->currentIndex());
+        channel.tabPage->appendText("<span style=\"color: darkgrey;\">" + nickname + " is on server " + server + " - " + serverInfo + "</span>");
+    }
+
+    else if(command.command == "317") // idle
+    {
+        QString nickname = command.parameters.at(1);
+        QString signOnTime = command.parameters.last();
+        QString idleSince = command.parameters.at(2);
+        Channel channel = _openChannels->at(ui->tabWidget->currentIndex());
+        channel.tabPage->appendText("<span style=\"color: darkgrey;\">" + nickname + " is idle since " + idleSince + " seconds</span>");
+    }
 
     else if(command.command == "PRIVMSG")
     {
@@ -208,24 +268,37 @@ void IrcClient::handleMessage(const IRC::Command &command)
         QString recipient = command.parameters.at(0);
         QString message = command.trailing;
 
-        outputText = sender + ": " + message;
+        QString outputText = "<b style=\"color: darkred;\">" + sender + "</b>: " + message;
+
+        Channel channel;
 
         if(recipient.startsWith("#"))
         {
-            tab = _tabs.value(recipient);
+            channel = _openChannels->at(getChannelIndex(recipient));
         } else {
-            createTab(sender); // evtl geht es hier kaputt wegen weiterleitung #linux -> ##linux
-            tab = _tabs.value(sender);
+            if(getChannelIndex(sender) == -1)
+            {
+                channel = Channel();
+                channel.name = sender;
+                channel.users->append(User(sender));
+                createTab(channel); // evtl geht es hier kaputt wegen weiterleitung #linux -> ##linux
+            } else {
+                channel = _openChannels->at(getChannelIndex(sender));
+            }
         }
-        tab->appendText(outputText);
+        channel.tabPage->appendText(outputText);
     }
 
     // send to Server tab.
-    outputText = ":" + command.prefix + " " + command.parameters.join(" ") + " :" + command.trailing;
-    tab = _tabs.value("Server");
-    tab->appendText(outputText);
 
+    QString outputText = "";
 
+    if(!command.prefix.isEmpty()) outputText.append(":" + command.prefix + " ");
+    outputText.append(command.command);
+    if(!command.parameters.isEmpty()) outputText.append(" " + command.parameters.join(" "));
+    if(!command.trailing.isEmpty()) outputText.append(" :" + command.trailing);
+
+    _openChannels->at(0).tabPage->appendText(outputText);
 }
 
 void IrcClient::on_sendButton_clicked()
@@ -242,10 +315,10 @@ void IrcClient::on_sendButton_clicked()
             IRC::Command command = _irc->parseMessage(message.mid(1));
             if(message.startsWith("/join "))
             {
-                QString channel = command.parameters.first();
+                Channel channel = Channel();
+                channel.name = command.parameters.first();
                 createTab(channel);
-                //ui->tabWidget->setCurrentIndex(ui->tabWidget->indexOf(_tabs.value(channel)));
-                ui->tabWidget->setCurrentWidget(_tabs.value(channel));
+                ui->tabWidget->setCurrentIndex(getChannelIndex(channel.name));
             }
             _irc->sendCommand(command);
         } else {
@@ -279,25 +352,65 @@ void IrcClient::on_actionDisconnect_triggered()
     _irc->closeConnection();
     ui->actionConnect->setEnabled(true);
     ui->actionDisconnect->setEnabled(false);
-    for(auto tab: _tabs.values())
+    for(int i = 1; i < _openChannels->size(); i++)
     {
-        if(_tabs.key(tab) != "Server")
-        {
-            ui->tabWidget->removeTab(ui->tabWidget->indexOf(tab));
-            _tabs.remove(_tabs.key(tab));
-        }
+        removeTab(i);
     }
-    _users.clear();
 }
 
 void IrcClient::on_tabWidget_tabCloseRequested(int index)
 {
-    QString channel = ui->tabWidget->tabBar()->tabText(index);
-    removeTab(channel);
 
     IRC::Command command;
     command.command = "PART";
-    command.parameters.append(channel);
+    command.parameters.append(_openChannels->at(index).name);
     command.trailing = "bye!";
     _irc->sendCommand(command);
+    removeTab(index);
+}
+
+void IrcClient::showUserListContextMenu(const QPoint &pos)
+{
+    QPoint globalPos = ui->userList->mapToGlobal(pos);
+
+    QMenu menu;
+    menu.addAction("whois", this, SLOT(whois()));
+    menu.exec(globalPos);
+}
+
+void IrcClient::whois()
+{
+    QListWidgetItem *item = ui->userList->currentItem();
+    IRC::Command command;
+    command.command = "WHOIS";
+    command.parameters.append(item->text());
+    _irc->sendCommand(command);
+}
+
+int IrcClient::getChannelIndex(QString name)
+{
+    int index = -1;
+    for(int i = 0; i < _openChannels->size(); i++)
+    {
+        if(_openChannels->at(i).name == name)
+        {
+            index = i;
+            break;
+        }
+    }
+    return index;
+}
+
+int IrcClient::getUserIndex(int channelIndex, QString name)
+{
+    int index = -1;
+    for(int i = 0; i < _openChannels->at(channelIndex).users->size(); i++)
+    {
+        if(_openChannels->at(channelIndex).users->at(i).name == name)
+        {
+            index = i;
+            break;
+        }
+    }
+    return index;
 }

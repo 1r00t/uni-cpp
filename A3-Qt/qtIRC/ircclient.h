@@ -4,7 +4,8 @@
 #include <QMainWindow>
 #include <QTcpSocket>
 #include <QDebug>
-#include <memory>
+#include <QAbstractListModel>
+#include <set>
 #include "serverselectwidget.h"
 #include "irc.h"
 #include "tabpage.h"
@@ -21,6 +22,16 @@ public:
     explicit IrcClient(QWidget *parent = 0);
     ~IrcClient();
 
+    struct Channel
+    {
+        QString name;
+        TabPage *tabPage;
+        std::set<User> *users;
+        int userCount = 0;
+
+        Channel(): users(new std::set<User>()){}
+    };
+
 private slots:
     void handleMessage(const IRC::Command &command);
     void connectionOpen();
@@ -33,20 +44,23 @@ private slots:
 
     void on_tabWidget_tabCloseRequested(int index);
 
+    void showUserListContextMenu(const QPoint& pos);
+    void whois();
+
 private:
     Ui::IrcClient *ui;
-
     IRC *_irc;
-
     ServerSelectWidget *serverSelectWidget;
 
-    QMap<QString, TabPage*> _tabs; // sollte auch besser auf den heap!
-    QMap<QString, QStringList> _users; // sollte besser auf dem heap sein!
+    std::vector<Channel> *_openChannels;
 
-    void createTab(const QString &name);
-    void removeTab(const QString &name);
+    int getChannelIndex(QString name);
+    int getUserIndex(int channelIndex, QString name);
 
-    void IrcClient::updateAndShowUserList(QString channel);
+    void createTab(Channel channel);
+    void removeTab(int index);
+
+    void IrcClient::showUserList(int index);
 };
 
 #endif // IRCCLIENT_H

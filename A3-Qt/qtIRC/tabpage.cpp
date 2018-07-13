@@ -6,6 +6,7 @@ TabPage::TabPage(QWidget *parent) :
     ui(new Ui::TabPage)
 {
     ui->setupUi(this);
+    ui->textEdit->setTextInteractionFlags(Qt::LinksAccessibleByMouse | Qt::TextSelectableByMouse);
 }
 
 TabPage::~TabPage()

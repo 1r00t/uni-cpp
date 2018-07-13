@@ -28,13 +28,15 @@ SOURCES += \
         ircclient.cpp \
         irc.cpp \
     serverselectwidget.cpp \
-    tabpage.cpp
+    tabpage.cpp \
+    userlistmodel.cpp
 
 HEADERS += \
         ircclient.h \
         irc.h \
     serverselectwidget.h \
-    tabpage.h
+    tabpage.h \
+    userlistmodel.h
 
 FORMS += \
         ircclient.ui \
