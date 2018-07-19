@@ -5,10 +5,14 @@
 #include <QTcpSocket>
 #include <QDebug>
 #include <QAbstractListModel>
+#include <QListView>
+#include <QListWidget>
+#include <QStandardItemModel>
 #include <set>
 #include "serverselectwidget.h"
 #include "irc.h"
 #include "tabpage.h"
+
 
 namespace Ui {
 class IrcClient;
@@ -26,10 +30,10 @@ public:
     {
         QString name;
         TabPage *tabPage;
-        std::set<User> *users;
+        QStandardItemModel *userList;
         int userCount = 0;
 
-        Channel(): users(new std::set<User>()){}
+        Channel(): userList(new QStandardItemModel()){}
     };
 
 private slots:
@@ -60,7 +64,10 @@ private:
     void createTab(Channel channel);
     void removeTab(int index);
 
-    void IrcClient::showUserList(int index);
+    QStandardItemModel *userListModel;
+    std::vector<QStandardItem*> userList;
+
+    //void IrcClient::showUserList(int index);
 };
 
 #endif // IRCCLIENT_H

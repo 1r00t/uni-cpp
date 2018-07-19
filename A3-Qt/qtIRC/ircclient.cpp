@@ -12,6 +12,9 @@ IrcClient::IrcClient(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    userListModel = new QStandardItemModel();
+    ui->userList->setModel(userListModel);
+
     // connect ui _irc
     connect(_irc, SIGNAL(messageReceived(IRC::Command)), this, SLOT(handleMessage(IRC::Command)));
     connect(ui->tabWidget, SIGNAL(currentChanged(int)), this, SLOT(on_tabSwitched(int)));
@@ -69,27 +72,28 @@ void IrcClient::removeTab(int index)
 
 void IrcClient::on_tabSwitched(int index)
 {
-
-    showUserList(index);
+    userListModel = _openChannels->at(index).userList;
+    ui->userList->setModel(userListModel);
+    // change model;
 }
 
 
-void IrcClient::showUserList(int index)
-{
+//void IrcClient::showUserList(int index)
+//{
 
-    Channel channel = _openChannels->at(index);
+//    Channel channel = _openChannels->at(index);
 
-    auto users = channel.users;
+//    auto users = channel.users;
 
-    ui->userList->clear();
+//    ui->userList->clear();
 
-    for(int i = 0; i < users->size(); i++)
-    {
-        QString userName = *std::next(users->begin(), i);
-        ui->userList->addItem(users->QString);
-        ui->userList->addItem(users->at(i).name);
-    }
-}
+//    for(int i = 0; i < users->size(); i++)
+//    {
+//        QString userName = *std::next(users->begin(), i);
+//        ui->userList->addItem(users->QString);
+//        ui->userList->addItem(users->at(i).name);
+//    }
+//}
 
 
 void IrcClient::handleMessage(const IRC::Command &command)
@@ -131,14 +135,15 @@ void IrcClient::handleMessage(const IRC::Command &command)
         // add users
         for(QString userName: userNames)
         {
-            channel.users->append(User(userName));
+            userList.push_back(new QStandardItem(userName));
+            channel.userList->appendRow(userList.back());
         }
 
         // show userlist if is curren index
-        if(channelIndex == ui->tabWidget->currentIndex())
-        {
-            showUserList(channelIndex);
-        }
+//        if(channelIndex == ui->tabWidget->currentIndex())
+//        {
+//            showUserList(channelIndex);
+//        }
     }
 
     // ":alpha!~alpha@97-127-17-117.mpls.qwest.net JOIN ##linux"
@@ -150,13 +155,14 @@ void IrcClient::handleMessage(const IRC::Command &command)
         int channelIndex = getChannelIndex(channelName);
         Channel channel = _openChannels->at(channelIndex);
 
-        channel.users->append(User(userName));
+        userList.push_back(new QStandardItem(userName));
+        channel.userList->appendRow(userList.back());
         channel.tabPage->appendText("<span style=\"color: lightgrey;\"><b>" + userName + "</b> joined</span>");
 
-        if(channelIndex == ui->tabWidget->currentIndex())
-        {
-            showUserList(channelIndex);
-        }
+//        if(channelIndex == ui->tabWidget->currentIndex())
+//        {
+//            showUserList(channelIndex);
+//        }
     }
 
     // ":irwinz!~irwinz@107-138-25-186.lightspeed.austtx.sbcglobal.net QUIT :Changing host"
@@ -171,13 +177,14 @@ void IrcClient::handleMessage(const IRC::Command &command)
             int userIndex = getUserIndex(i, userName);
             if(userIndex != -1)
             {
-                _openChannels->at(i).users->removeAt(userIndex);
+                userList.erase(userList.begin() + userIndex);
+                _openChannels->at(i).userList->removeRow(userIndex);
                 _openChannels->at(i).tabPage->appendText("<span style=\"color: lightgrey;\"><b>" + userName + "</b> quit (" + command.trailing + ")</span>");
 
-                if(i == ui->tabWidget->currentIndex())
-                {
-                    showUserList(i);
-                }
+//                if(i == ui->tabWidget->currentIndex())
+//                {
+//                    showUserList(i);
+//                }
             }
         }
     }
@@ -191,13 +198,14 @@ void IrcClient::handleMessage(const IRC::Command &command)
         int channelIndex = getChannelIndex(channelName);
         int userIndex = getUserIndex(channelIndex, userName);
 
-        _openChannels->at(channelIndex).users->removeAt(userIndex);
+        userList.erase(userList.begin() + userIndex);
+        _openChannels->at(channelIndex).userList->removeRow(userIndex);
         _openChannels->at(channelIndex).tabPage->appendText("<span style=\"color: lightgrey;\"><b>" + userName + "</b> parted (" + command.trailing + ")</span>");
 
-        if(channelIndex == ui->tabWidget->currentIndex())
-        {
-            showUserList(channelIndex);
-        }
+//        if(channelIndex == ui->tabWidget->currentIndex())
+//        {
+//            showUserList(channelIndex);
+//        }
     }
 
     // ":p1n0ch3t!~root@45.56.151.86 NICK :Guest24324"
@@ -213,13 +221,16 @@ void IrcClient::handleMessage(const IRC::Command &command)
 
             if(userIndex != -1)
             {
-                _openChannels->at(i).users->at(userIndex).name = newUserName;
+                // HIER IST DER FEHLER DASS &QStandardItem nicht persistent ist denke ich!
+
+                userList.at(userIndex) = new QStandardItem(newUserName);
+                _openChannels->at(i).userList->setItem(userIndex, userList.at(userIndex));
                 _openChannels->at(i).tabPage->appendText("<span style=\"color: lightgrey;\"><b>" + oldUserName + "</b> changed name to <b>" + newUserName + "</b></span>");
 
-                if(i == ui->tabWidget->currentIndex())
-                {
-                    showUserList(i);
-                }
+//                if(i == ui->tabWidget->currentIndex())
+//                {
+//                    showUserList(i);
+//                }
             }
         }
     }
@@ -280,7 +291,7 @@ void IrcClient::handleMessage(const IRC::Command &command)
             {
                 channel = Channel();
                 channel.name = sender;
-                channel.users->append(User(sender));
+                channel.userList->appendRow(&QStandardItem(sender));
                 createTab(channel); // evtl geht es hier kaputt wegen weiterleitung #linux -> ##linux
             } else {
                 channel = _openChannels->at(getChannelIndex(sender));
@@ -380,10 +391,10 @@ void IrcClient::showUserListContextMenu(const QPoint &pos)
 
 void IrcClient::whois()
 {
-    QListWidgetItem *item = ui->userList->currentItem();
+    QString item = ui->userList->currentIndex().data().toByteArray();
     IRC::Command command;
     command.command = "WHOIS";
-    command.parameters.append(item->text());
+    command.parameters.append(item);
     _irc->sendCommand(command);
 }
 
@@ -404,9 +415,9 @@ int IrcClient::getChannelIndex(QString name)
 int IrcClient::getUserIndex(int channelIndex, QString name)
 {
     int index = -1;
-    for(int i = 0; i < _openChannels->at(channelIndex).users->size(); i++)
+    for(int i = 0; i < _openChannels->at(channelIndex).userList->rowCount(); i++)
     {
-        if(_openChannels->at(channelIndex).users->at(i).name == name)
+        if(_openChannels->at(channelIndex).userList->item(i)->data() == name)
         {
             index = i;
             break;

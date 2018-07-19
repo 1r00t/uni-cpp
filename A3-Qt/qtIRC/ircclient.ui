@@ -39,7 +39,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QListWidget" name="userList">
+        <widget class="QListView" name="userList">
          <property name="minimumSize">
           <size>
            <width>150</width>
@@ -51,12 +51,6 @@
            <width>150</width>
            <height>16777215</height>
           </size>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::StyledPanel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
          </property>
         </widget>
        </item>
