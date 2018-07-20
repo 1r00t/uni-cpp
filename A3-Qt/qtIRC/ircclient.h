@@ -10,6 +10,7 @@
 #include <QStandardItemModel>
 #include <set>
 #include "serverselectwidget.h"
+#include "joindialog.h"
 #include "irc.h"
 #include "tabpage.h"
 
@@ -31,7 +32,6 @@ public:
         QString name;
         TabPage *tabPage;
         QStandardItemModel *userList;
-        int userCount = 0;
 
         Channel(): userList(new QStandardItemModel()){}
     };
@@ -39,23 +39,26 @@ public:
 private slots:
     void handleMessage(const IRC::Command &command);
     void connectionOpen();
+    void showUserListContextMenu(const QPoint& pos);
+    void whois();
+    void joinChannel(QString channelName);
 
     void on_actionConnect_triggered();
     void on_sendButton_clicked();
     void on_chatLineEdit_returnPressed();
     void on_tabSwitched(int index);
     void on_actionDisconnect_triggered();
-
     void on_tabWidget_tabCloseRequested(int index);
 
-    void showUserListContextMenu(const QPoint& pos);
-    void whois();
+
+    void on_actionjoin_channel_triggered();
 
 private:
     Ui::IrcClient *ui;
+
     IRC *_irc;
     ServerSelectWidget *serverSelectWidget;
-
+    JoinDialog *joinDialog;
     std::vector<Channel> *_openChannels;
 
     int getChannelIndex(QString name);
@@ -63,11 +66,7 @@ private:
 
     void createTab(Channel channel);
     void removeTab(int index);
-
-    QStandardItemModel *userListModel;
-    std::vector<QStandardItem*> userList;
-
-    //void IrcClient::showUserList(int index);
+    void addUser(Channel channel, QString userName);
 };
 
 #endif // IRCCLIENT_H

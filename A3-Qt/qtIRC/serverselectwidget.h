@@ -4,8 +4,6 @@
 #include <QWidget>
 #include "irc.h"
 
-
-
 namespace Ui {
 class ServerSelectWidget;
 }
@@ -13,9 +11,6 @@ class ServerSelectWidget;
 class ServerSelectWidget : public QWidget
 {
     Q_OBJECT
-
-//signals:
-//    void openConnection();
 
 public:
     explicit ServerSelectWidget(QWidget *parent = 0, IRC *irc = nullptr);

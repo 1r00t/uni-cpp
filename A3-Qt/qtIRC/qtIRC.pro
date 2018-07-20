@@ -28,15 +28,18 @@ SOURCES += \
         ircclient.cpp \
         irc.cpp \
     serverselectwidget.cpp \
-    tabpage.cpp
+    tabpage.cpp \
+    joindialog.cpp
 
 HEADERS += \
         ircclient.h \
         irc.h \
     serverselectwidget.h \
-    tabpage.h
+    tabpage.h \
+    joindialog.h
 
 FORMS += \
         ircclient.ui \
     serverselectwidget.ui \
-    tabpage.ui
+    tabpage.ui \
+    joindialog.ui
